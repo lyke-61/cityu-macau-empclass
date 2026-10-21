@@ -1,0 +1,20 @@
+时间：2026-10-21T21:07:54+08:00
+Python：3.11.17  平台：linux
+请求地址：https://urp.cityu.edu.mo/RoomManagement/RoomsBroadcast.aspx?BuildID=TC&FloorID=L
+
+--- 逐步诊断 ---
+urp.cityu.edu.mo 解析到 202.175.79.228
+  L: 第 1 次失败 —— URLError: <urlopen error timed out>
+  L: 第 2 次失败 —— URLError: <urlopen error timed out>
+  L: 第 3 次失败 —— URLError: <urlopen error timed out>
+
+--- 异常堆栈 ---
+Traceback (most recent call last):
+  File "/home/runner/work/cityu-macau-empclass/cityu-macau-empclass/scraper/fetch_rooms.py", line 213, in main
+    run(args)
+  File "/home/runner/work/cityu-macau-empclass/cityu-macau-empclass/scraper/fetch_rooms.py", line 186, in run
+    page = fetch(code, args.offline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/cityu-macau-empclass/cityu-macau-empclass/scraper/fetch_rooms.py", line 96, in fetch
+    raise RuntimeError(f"{code} 抓取失败（已重试 3 次）：{last}")
+RuntimeError: L 抓取失败（已重试 3 次）：URLError: <urlopen error timed out>
