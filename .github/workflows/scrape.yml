@@ -1,0 +1,38 @@
+name: 抓取教室占用
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"   # 每 10 分钟。GitHub 的高峰期可能延迟几分钟。
+  workflow_dispatch:          # 支持手动触发
+
+permissions:
+  contents: write             # 需要写权限才能把 rooms.json 提交回去
+
+concurrency:
+  group: scrape-rooms
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 抓取六个楼栋
+        run: python3 scraper/fetch_rooms.py --out data/rooms.json
+
+      - name: 提交结果
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/rooms.json
+          if git diff --cached --quiet; then
+            echo "没有变化，跳过提交"
+            exit 0
+          fi
+          git commit -m "chore: 更新教室占用 $(date -u +'%Y-%m-%d %H:%MZ')"
+          git push

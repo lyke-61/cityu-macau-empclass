@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0d10">
+<meta name="description" content="澳城大氹仔校区空教室查询，手机一屏看完。">
+<title>空教室 · 澳城大氹仔</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="top">
+  <div class="top-row">
+    <h1>空教室</h1>
+    <span class="clock" id="clock">--:--</span>
+  </div>
+  <div class="sub" id="meta">載入中…</div>
+</header>
+
+<div class="notice" id="notice" hidden></div>
+
+<main id="list" aria-live="polite"></main>
+
+<footer>
+  <p>數據取自學校公開的教室佔用廣播頁面，每 10 分鐘更新一次。</p>
+  <p>教室內可能有臨時課程、借用或封閉，以現場為準。</p>
+  <p class="dim" id="stamp"></p>
+  <p class="dim">學生自建工具，與學校無關。</p>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>
