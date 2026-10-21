@@ -1,0 +1,10 @@
+{
+  // 用 Cloudflare Workers 的静态资源功能托管 site/ 目录
+  // 部署命令：npx wrangler deploy
+  "name": "emp-class",
+  "compatibility_date": "2026-10-21",
+  "assets": {
+    "directory": "./site",
+    "not_found_handling": "404-page"
+  }
+}
