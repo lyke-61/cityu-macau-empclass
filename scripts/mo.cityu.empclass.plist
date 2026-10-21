@@ -11,14 +11,10 @@
         <string>/Users/revol/dsh chat/emp-class/scripts/local_run.sh</string>
     </array>
 
-    <!-- 每天 07:00 跑一次（页面给的是当天整表，抓一次够用一天） -->
-    <key>StartCalendarInterval</key>
-    <dict>
-        <key>Hour</key>
-        <integer>7</integer>
-        <key>Minute</key>
-        <integer>0</integer>
-    </dict>
+    <!-- 每 10 分钟检查一次。睡眠期间计时器暂停，唤醒后 launchd 会立刻补跑，
+         所以「开盖」后很快就会更新。数据没变化时不会产生提交。 -->
+    <key>StartInterval</key>
+    <integer>600</integer>
 
     <!-- 开机/登录后立刻跑一次 -->
     <key>RunAtLoad</key>

@@ -166,8 +166,8 @@ def load_holiday(date_iso):
 
 
 def run(args):
+    # generated_at 单独处理：内容没变就不动它，避免每次都产生提交
     result = {
-        "generated_at": datetime.now(MACAU_TZ).isoformat(timespec="seconds"),
         "date": None,
         "day_start_hour": DAY_START_HOUR,
         "slot_minutes": SLOT_MINUTES,
@@ -196,6 +196,19 @@ def run(args):
 
     result["room_count"] = total
     result["holiday"] = load_holiday(result["date"]) if result["date"] else None
+
+    # 和已有文件比对（忽略 generated_at）。一样就不重写，避免无意义的提交。
+    try:
+        with open(args.out, encoding="utf-8") as f:
+            old = json.load(f)
+        old_cmp = {k: v for k, v in old.items() if k != "generated_at"}
+        if old_cmp == result:
+            log(f"数据与 {args.out} 完全一致，跳过写入")
+            return
+    except (FileNotFoundError, json.JSONDecodeError):
+        pass
+
+    result = {"generated_at": datetime.now(MACAU_TZ).isoformat(timespec="seconds"), **result}
 
     with open(args.out, "w", encoding="utf-8") as f:
         json.dump(result, f, ensure_ascii=False, separators=(",", ":"))
