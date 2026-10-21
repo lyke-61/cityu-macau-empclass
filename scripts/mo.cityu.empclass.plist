@@ -18,10 +18,10 @@
         <string>__PROJECT_DIR__/scripts/local_run.sh</string>
     </array>
 
-    <!-- 每小时检查一次。睡眠期间计时器暂停，唤醒后 launchd 会补跑，
-         所以合盖再打开后也会更新。数据没变化时不会写文件、不会提交。 -->
+    <!-- 每 8 小时检查一次。睡眠期间计时器暂停，唤醒后 launchd 会补跑。
+         数据没变化时不会写文件、不会提交。 -->
     <key>StartInterval</key>
-    <integer>3600</integer>
+    <integer>28800</integer>
 
     <!-- 登录后立刻跑一次 -->
     <key>RunAtLoad</key>
