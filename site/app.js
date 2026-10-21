@@ -3,8 +3,8 @@
  */
 
 const CONFIG = {
-  githubUser: "YOUR_GITHUB_USERNAME", // ← 改成你的 GitHub 用户名
-  repo: "emp-class",
+  githubUser: "lyke-61",
+  repo: "cityu-macau-empclass",
   branch: "main",
   path: "data/rooms.json",
 };

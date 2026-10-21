@@ -36,12 +36,15 @@ GitHub Actions（每 10 分钟）
 
 ### 2. 改一处配置
 
-打开 `site/app.js`，把第一行的用户名换成你的：
+`site/app.js` 顶部已经填好当前仓库信息，换仓库时才需要改：
 
 ```js
-const GITHUB_USER = "你的GitHub用户名";
-const GITHUB_REPO = "emp-class";
-const GITHUB_BRANCH = "main";
+const CONFIG = {
+  githubUser: "lyke-61",
+  repo: "cityu-macau-empclass",
+  branch: "main",
+  path: "data/rooms.json",
+};
 ```
 
 ### 3. 开 Actions
@@ -58,7 +61,7 @@ Cloudflare Dashboard → Workers & Pages → Create → Pages → Connect to Git
 
 | 项目 | 填什么 |
 |---|---|
-| Project name | `emp-class`（就是你的子域名） |
+| Project name | `emp-class`（就是你的子域名，**不必和仓库同名**） |
 | Production branch | `main` |
 | Framework preset | `None` |
 | Build command | 留空 |
