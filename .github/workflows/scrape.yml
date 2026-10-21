@@ -1,9 +1,10 @@
 name: 抓取教室占用
 
+# 注：学校服务器不接受 GitHub 机房的连接（TCP 超时），
+# 所以定时抓取改在本地机器上跑，见 scripts/local_run.sh。
+# 这里只保留手动触发，用来测试。
 on:
-  schedule:
-    - cron: "*/10 * * * *"   # 每 10 分钟。GitHub 高峰期可能延迟几分钟。
-  workflow_dispatch:          # 支持手动触发
+  workflow_dispatch:
 
 permissions:
   contents: write             # 需要写权限才能把结果提交回去

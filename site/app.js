@@ -10,8 +10,7 @@ const CONFIG = {
 };
 
 const WEEKDAYS = ["日", "一", "二", "三", "四", "五", "六"];
-const REFRESH_MS = 5 * 60 * 1000;   // 多久重新拉一次数据
-const STALE_MIN = 30;               // 超过多久算「可能过期」
+const REFRESH_MS = 30 * 60 * 1000;  // 多久重新拉一次数据（数据每天更新，不需要太频繁）
 
 let state = { data: null, open: new Set(), lastFetch: 0 };
 
@@ -118,15 +117,12 @@ function renderNotice(data) {
     holiday = true;
   }
 
-  const gen = data.generated_at ? new Date(data.generated_at) : null;
   const today = new Date();
   const todayIso = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
 
+  // 數據是當天整表，只要日期對就是有效的；日期不對才需要警告
   if (data.date && data.date !== todayIso) {
-    messages.push(`數據日期是 ${data.date}，不是今天，抓取可能已中斷。`);
-  } else if (gen && (Date.now() - gen.getTime()) / 60000 > STALE_MIN) {
-    const mins = Math.round((Date.now() - gen.getTime()) / 60000);
-    messages.push(`數據已 ${mins} 分鐘未更新，可能不是最新。`);
+    messages.push(`數據日期是 ${data.date}，不是今天，今天的抓取可能沒跑。`);
   }
 
   el.hidden = messages.length === 0;
