@@ -5,6 +5,8 @@
 
 只依赖 Python 标准库，GitHub Actions 里不用装任何东西。
 
+失败时会把完整诊断写进 data/last_error.txt，方便远程排查。
+
 用法：
     python3 scraper/fetch_rooms.py                # 抓线上并写入 data/rooms.json
     python3 scraper/fetch_rooms.py --out x.json   # 指定输出
@@ -14,15 +16,18 @@
 import argparse
 import html
 import json
+import os
 import re
+import socket
 import sys
 import time
+import traceback
+import urllib.error
 import urllib.request
 from datetime import datetime, timedelta, timezone
 
 BASE = "https://urp.cityu.edu.mo/RoomManagement/RoomsBroadcast.aspx?BuildID=TC&FloorID={code}"
 
-# 六栋楼。只保留含「課室」的房间（可自习）。
 BUILDINGS = [
     ("L", "中葡樓"),
     ("N", "蔡繼有樓"),
@@ -37,19 +42,31 @@ UA = (
     "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
 )
 
-DAY_START_HOUR = 8      # 表格从 8:00 开始
-SLOT_MINUTES = 10       # 每格 10 分钟
-SLOTS_PER_DAY = 96      # 16 小时 × 6 格
-KEEP_KEYWORD = "課室"    # 只留这类房间
+DAY_START_HOUR = 8
+SLOT_MINUTES = 10
+SLOTS_PER_DAY = 96
+KEEP_KEYWORD = "課室"
 
 MACAU_TZ = timezone(timedelta(hours=8))
+ERROR_FILE = "data/last_error.txt"
+
+DIAG = []  # 诊断信息，失败时写进 ERROR_FILE
+
+
+def log(msg):
+    DIAG.append(msg)
+    print(msg, file=sys.stderr)
+
+
+def clean(text):
+    text = re.sub(r"<[^>]+>", "", text)
+    return html.unescape(text).replace("\xa0", " ").strip()
 
 
 def fetch(code, offline_dir=None):
     """取一个楼栋的 HTML。带 UA 是必须的，否则服务器返回 System Error 页。"""
     if offline_dir:
-        path = f"{offline_dir}/b_{code}.html"
-        with open(path, encoding="utf-8") as f:
+        with open(f"{offline_dir}/b_{code}.html", encoding="utf-8") as f:
             return f.read()
 
     last = None
@@ -64,7 +81,7 @@ def fetch(code, offline_dir=None):
             })
             with urllib.request.urlopen(req, timeout=45) as resp:
                 raw = resp.read()
-                print(f"    {code}: HTTP {resp.status}, {len(raw)} 字节", file=sys.stderr)
+                log(f"  {code}: HTTP {resp.status}, {len(raw)} 字节")
                 return raw.decode("utf-8", errors="replace")
 
         except urllib.error.HTTPError as e:
@@ -73,28 +90,24 @@ def fetch(code, offline_dir=None):
         except Exception as e:
             last = f"{type(e).__name__}: {e}"
 
-        print(f"    {code}: 第 {attempt + 1} 次失败 —— {last}", file=sys.stderr)
+        log(f"  {code}: 第 {attempt + 1} 次失败 —— {last}")
         time.sleep(2 * (attempt + 1))
 
     raise RuntimeError(f"{code} 抓取失败（已重试 3 次）：{last}")
 
 
-def clean(text):
-    text = re.sub(r"<[^>]+>", "", text)
-    return html.unescape(text).replace("\xa0", " ").strip()
-
-
-def parse_page(page, code, building_name):
-    """解析一张表，返回 (日期字符串, [房间...])。"""
+def parse_page(page, code):
     if "SystemError" in page:
-        raise RuntimeError(f"{code}: 服务器返回错误页（可能被限流或 UA 被拦）")
+        raise RuntimeError(
+            f"{code}: 服务器返回 SystemError 页面（UA 被拦、IP 被限流或参数不对）"
+        )
 
     m = re.search(r"日期 Date:\s*<a>\s*([\d/]+)\s*</a>", page)
     date_str = m.group(1) if m else ""
 
     table = re.search(r'<table id="uiTable".*?</table>', page, re.S)
     if not table:
-        raise RuntimeError(f"{code}: 页面上找不到 uiTable")
+        raise RuntimeError(f"{code}: 页面上找不到 uiTable，页面结构可能改了")
     table = table.group(0)
 
     rooms = []
@@ -105,9 +118,8 @@ def parse_page(page, code, building_name):
 
         name = clean(tds[0][1])
         if not name or name.startswith("教室名稱"):
-            continue  # 表头
+            continue
 
-        # 第一格的 colspan 恒为 1（房间名），剩余跨度应等于 96
         slots = []
         for attrs, text in tds[1:]:
             cs = re.search(r'colspan="(\d+)"', attrs)
@@ -117,14 +129,12 @@ def parse_page(page, code, building_name):
             slots.extend([label if used else None] * span)
 
         if len(slots) != SLOTS_PER_DAY:
-            # 数据异常就跳过这一间，避免整站算错
-            print(f"  ! {code} {name}: 跨度 {len(slots)} != {SLOTS_PER_DAY}，跳过", file=sys.stderr)
+            log(f"  ! {code} {name}: 跨度 {len(slots)} != {SLOTS_PER_DAY}，跳过")
             continue
 
         if KEEP_KEYWORD not in name:
             continue
 
-        # 相邻且同名的占用格合并成块
         blocks = []
         i = 0
         while i < len(slots):
@@ -147,21 +157,15 @@ def parse_page(page, code, building_name):
 
 
 def load_holiday(date_iso):
-    """从 data/holidays.json 里查当天是不是公众假期。查不到就返回 None。"""
     try:
         with open("data/holidays.json", encoding="utf-8") as f:
             table = json.load(f).get("holidays", {})
     except FileNotFoundError:
         return None
-    return table.get(date_iso[5:])  # "YYYY-MM-DD" → "MM-DD"
+    return table.get(date_iso[5:])
 
 
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--out", default="data/rooms.json")
-    ap.add_argument("--offline", help="用本地目录里的 b_<code>.html 调试")
-    args = ap.parse_args()
-
+def run(args):
     result = {
         "generated_at": datetime.now(MACAU_TZ).isoformat(timespec="seconds"),
         "date": None,
@@ -171,25 +175,24 @@ def main():
         "buildings": [],
     }
 
-    try:
-        import socket
-        print(f"urp.cityu.edu.mo 解析到 {socket.gethostbyname('urp.cityu.edu.mo')}", file=sys.stderr)
-    except Exception as e:
-        print(f"DNS 解析失败：{e}", file=sys.stderr)
+    if not args.offline:
+        try:
+            log(f"urp.cityu.edu.mo 解析到 {socket.gethostbyname('urp.cityu.edu.mo')}")
+        except Exception as e:
+            log(f"DNS 解析失败：{type(e).__name__}: {e}")
 
     total = 0
     for code, name in BUILDINGS:
         page = fetch(code, args.offline)
-        date_str, rooms = parse_page(page, code, name)
+        date_str, rooms = parse_page(page, code)
         if date_str:
-            # 页面是 D/M/YYYY，统一成 YYYY-MM-DD
             d, mth, y = date_str.split("/")
             result["date"] = f"{y}-{mth.zfill(2)}-{d.zfill(2)}"
         total += len(rooms)
         result["buildings"].append({"code": code, "name": name, "rooms": rooms})
-        print(f"  {code} {name}: {len(rooms)} 间可自习教室", file=sys.stderr)
+        log(f"  {code} {name}: {len(rooms)} 间可自习教室")
         if not args.offline:
-            time.sleep(0.8)  # 对学校服务器客气一点
+            time.sleep(0.8)
 
     result["room_count"] = total
     result["holiday"] = load_holiday(result["date"]) if result["date"] else None
@@ -197,7 +200,39 @@ def main():
     with open(args.out, "w", encoding="utf-8") as f:
         json.dump(result, f, ensure_ascii=False, separators=(",", ":"))
 
-    print(f"写入 {args.out}：{total} 间教室，日期 {result['date']}", file=sys.stderr)
+    log(f"写入 {args.out}：{total} 间教室，日期 {result['date']}")
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--out", default="data/rooms.json")
+    ap.add_argument("--offline", help="用本地目录里的 b_<code>.html 调试")
+    args = ap.parse_args()
+
+    try:
+        run(args)
+    except Exception:
+        detail = (
+            f"时间：{datetime.now(MACAU_TZ).isoformat(timespec='seconds')}\n"
+            f"Python：{sys.version.split()[0]}  平台：{sys.platform}\n"
+            f"请求地址：{BASE.format(code='L')}\n\n"
+            "--- 逐步诊断 ---\n" + "\n".join(DIAG) +
+            "\n\n--- 异常堆栈 ---\n" + traceback.format_exc()
+        )
+        try:
+            os.makedirs(os.path.dirname(ERROR_FILE), exist_ok=True)
+            with open(ERROR_FILE, "w", encoding="utf-8") as f:
+                f.write(detail)
+        except Exception:
+            pass
+        print(detail, file=sys.stderr)
+        sys.exit(1)
+
+    # 成功时清掉上一次的错误记录
+    try:
+        os.remove(ERROR_FILE)
+    except FileNotFoundError:
+        pass
 
 
 if __name__ == "__main__":
