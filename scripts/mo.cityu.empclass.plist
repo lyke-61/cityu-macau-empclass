@@ -1,5 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  模板文件：不要直接复制到 ~/Library/LaunchAgents。
+  用 scripts/install_launchd.sh 安装，它会自动把下面两个占位符替换成本机实际路径。
+
+    __PROJECT_DIR__  本仓库的绝对路径
+    __HOME__         当前用户的家目录
+-->
 <plist version="1.0">
 <dict>
     <key>Label</key>
@@ -8,7 +15,7 @@
     <key>ProgramArguments</key>
     <array>
         <string>/bin/bash</string>
-        <string>/Users/revol/dsh chat/emp-class/scripts/local_run.sh</string>
+        <string>__PROJECT_DIR__/scripts/local_run.sh</string>
     </array>
 
     <!-- 每小时检查一次。睡眠期间计时器暂停，唤醒后 launchd 会补跑，
@@ -16,17 +23,17 @@
     <key>StartInterval</key>
     <integer>3600</integer>
 
-    <!-- 开机/登录后立刻跑一次 -->
+    <!-- 登录后立刻跑一次 -->
     <key>RunAtLoad</key>
     <true/>
 
     <key>StandardOutPath</key>
-    <string>/Users/revol/.emp-class/stdout.log</string>
+    <string>__HOME__/.emp-class/stdout.log</string>
     <key>StandardErrorPath</key>
-    <string>/Users/revol/.emp-class/stderr.log</string>
+    <string>__HOME__/.emp-class/stderr.log</string>
 
     <key>WorkingDirectory</key>
-    <string>/Users/revol/dsh chat/emp-class</string>
+    <string>__PROJECT_DIR__</string>
 
     <key>EnvironmentVariables</key>
     <dict>

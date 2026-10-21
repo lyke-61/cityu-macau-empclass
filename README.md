@@ -50,17 +50,13 @@
 **定时任务**（launchd，每小时检查一次；数据没变不会写文件也不会提交）
 
 ```bash
-# 安装
-cp scripts/mo.cityu.empclass.plist ~/Library/LaunchAgents/
-launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/mo.cityu.empclass.plist
-
-# 查看状态（第二列 0 = 上次正常退出）
-launchctl list | grep empclass
-
-# 卸载
-launchctl bootout gui/$(id -u)/mo.cityu.empclass
-rm ~/Library/LaunchAgents/mo.cityu.empclass.plist
+bash scripts/install_launchd.sh      # 安装（自动填好本机路径）
+launchctl list | grep empclass        # 查看状态，第二列 0 = 上次正常退出
+bash scripts/uninstall_launchd.sh    # 卸载
 ```
+
+`scripts/mo.cityu.empclass.plist` 是模板，里面的 `__PROJECT_DIR__` 和 `__HOME__`
+由安装脚本替换成本机实际路径，所以不要直接 `cp` 它。
 
 合盖即睡眠，任务不会跑；但 launchd 会在唤醒后补跑，所以开盖后很快就会更新。
 日志在 `~/.emp-class/run.log`。
