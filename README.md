@@ -23,6 +23,14 @@
         手机浏览器 fetch raw.githubusercontent.com 上的 rooms.json
 ```
 
+**线上地址：https://emp-class.pages.dev**
+
+### 为什么用 Pages 而不是 Workers
+
+两个都试过，结论是 **Workers 的 `workers.dev` 域名在你这条网络被 DNS 污染**
+（解析到 `128.121.243.75` 这种伪地址，直连超时），而 `pages.dev` 解析正常、访问正常。
+所以最终用 Cloudflare Pages 托管，Worker 项目弃用。
+
 ### 为什么抓取必须在本机跑
 
 学校服务器（`202.175.79.228`）**不接受来自境外机房的连接**——GitHub Actions（Azure 美国）实测三次全部 TCP 超时，
