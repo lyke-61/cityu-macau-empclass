@@ -30,6 +30,28 @@
 
 所以 GitHub Actions 里的定时任务已经关掉（只留手动触发做测试）。
 
+### 定时任务（launchd）
+
+已经装好的话，电脑醒着时每天 07:00 自动跑一次。
+
+```bash
+# 安装
+cp scripts/mo.cityu.empclass.plist ~/Library/LaunchAgents/
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/mo.cityu.empclass.plist
+
+# 查看状态（第二列 0 = 上次正常退出）
+launchctl list | grep empclass
+
+# 卸载
+launchctl bootout gui/$(id -u)/mo.cityu.empclass
+rm ~/Library/LaunchAgents/mo.cityu.empclass.plist
+```
+
+关于合盖：合盖即睡眠，任务不会跑。但 **launchd 会在唤醒后补跑错过的日历任务**——
+早上 7 点电脑在包里睡着，你 9 点打开盖子，它会在开机后立刻补一次。
+
+日志在 `~/.emp-class/run.log`。
+
 ### 为什么页面只显示当天
 
 `RoomsBroadcast` 页面给的是当天整张 8:00–24:00 的占用表，一天之内不会变，
