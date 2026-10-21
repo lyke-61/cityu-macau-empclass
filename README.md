@@ -9,12 +9,12 @@
 ## 它怎么工作
 
 ```
-GitHub Actions（每 10 分钟）
+本机（每天 07:00，或手动）
         │
         ├─ 跑 scraper/fetch_rooms.py
         │     └─ 抓 6 个楼栋页，解析成「占用时段块」
         │
-        └─ 写入 data/rooms.json 并 commit
+        └─ 写入 data/rooms.json 并 push 到 GitHub
                     │
                     ▼
         Cloudflare Pages（只有代码改动才重新部署）
@@ -23,10 +23,17 @@ GitHub Actions（每 10 分钟）
         手机浏览器 fetch raw.githubusercontent.com 上的 rooms.json
 ```
 
-关键点：**数据更新不触发 Pages 构建**。Pages 免费额度是 500 次构建/月，
-如果每 10 分钟部署一次就是 4320 次/月，三天就爆。所以数据和站点分开走。
+### 为什么抓取必须在本机跑
 
----
+学校服务器（`202.175.79.228`）**不接受来自境外机房的连接**——GitHub Actions（Azure 美国）实测三次全部 TCP 超时，
+云端抓取服务同样连不上。你自己的网络和香港节点都正常。
+
+所以 GitHub Actions 里的定时任务已经关掉（只留手动触发做测试）。
+
+### 为什么页面只显示当天
+
+`RoomsBroadcast` 页面给的是当天整张 8:00–24:00 的占用表，一天之内不会变，
+所以**一天抓一次就够用一整天**，不需要高频轮询。
 
 ## 一次性配置（约 20 分钟）
 
@@ -47,12 +54,15 @@ const CONFIG = {
 };
 ```
 
-### 3. 开 Actions
+### 3. 检查 git 凭证
 
-仓库 → Settings → Actions → General → Workflow permissions →
-选 **Read and write permissions** → Save。
+本机推送要能免密完成，否则定时任务会卡在输入密码上。验证：
 
-不开这一步，定时任务没法把 `rooms.json` 提交回去。
+```bash
+cd "/Users/revol/dsh chat/emp-class" && git push --dry-run origin main
+```
+
+输出 `Everything up-to-date` 就说明凭证已记住。
 
 ### 4. 接 Pages
 
@@ -72,10 +82,13 @@ Cloudflare Dashboard → Workers & Pages → Create → Pages → Connect to Git
 最后进项目 → Settings → Build → **Build watch paths** 填 `site/*`
 （这样只有前端代码变了才重新构建，数据提交不会烧构建次数）。
 
-### 5. 手动跑一次
+### 5. 跑一次
 
-仓库 → Actions → 「抓取教室占用」→ Run workflow。
-等 1 分钟，`data/rooms.json` 会出现在仓库里，页面就能用了。
+```bash
+bash "/Users/revol/dsh chat/emp-class/scripts/local_run.sh"
+```
+
+有变化会自动 commit 并 push。日志在 `~/.emp-class/run.log`。
 
 ---
 
