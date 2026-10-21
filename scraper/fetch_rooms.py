@@ -52,14 +52,31 @@ def fetch(code, offline_dir=None):
         with open(path, encoding="utf-8") as f:
             return f.read()
 
-    req = urllib.request.Request(BASE.format(code=code), headers={
-        "User-Agent": UA,
-        "Accept-Language": "zh-TW,zh;q=0.9,en;q=0.8",
-        "Referer": "https://urp.cityu.edu.mo/RoomManagement/RoomsBroadcast.aspx",
-    })
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        raw = resp.read()
-    return raw.decode("utf-8", errors="replace")
+    last = None
+    for attempt in range(3):
+        try:
+            req = urllib.request.Request(BASE.format(code=code), headers={
+                "User-Agent": UA,
+                "Accept": "text/html,application/xhtml+xml",
+                "Accept-Language": "zh-TW,zh;q=0.9,en;q=0.8",
+                "Referer": "https://urp.cityu.edu.mo/RoomManagement/RoomsBroadcast.aspx",
+                "Connection": "close",
+            })
+            with urllib.request.urlopen(req, timeout=45) as resp:
+                raw = resp.read()
+                print(f"    {code}: HTTP {resp.status}, {len(raw)} 字节", file=sys.stderr)
+                return raw.decode("utf-8", errors="replace")
+
+        except urllib.error.HTTPError as e:
+            body = e.read()[:400].decode("utf-8", errors="replace").replace("\n", " ")
+            last = f"HTTP {e.code} {e.reason} | 响应开头: {body}"
+        except Exception as e:
+            last = f"{type(e).__name__}: {e}"
+
+        print(f"    {code}: 第 {attempt + 1} 次失败 —— {last}", file=sys.stderr)
+        time.sleep(2 * (attempt + 1))
+
+    raise RuntimeError(f"{code} 抓取失败（已重试 3 次）：{last}")
 
 
 def clean(text):
@@ -153,6 +170,12 @@ def main():
         "slots_per_day": SLOTS_PER_DAY,
         "buildings": [],
     }
+
+    try:
+        import socket
+        print(f"urp.cityu.edu.mo 解析到 {socket.gethostbyname('urp.cityu.edu.mo')}", file=sys.stderr)
+    except Exception as e:
+        print(f"DNS 解析失败：{e}", file=sys.stderr)
 
     total = 0
     for code, name in BUILDINGS:
