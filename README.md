@@ -16,13 +16,13 @@
         ├─ 跑 scraper/fetch_rooms.py
         │     └─ 抓 6 个楼栋页，解析成「占用时段块」
         │
-        └─ 写入 data/rooms.json 并 push 到 GitHub
+        └─ 写入 data/rooms.json、同步一份到 site/data/，push 到 GitHub
                     │
                     ▼
-        Cloudflare Pages（只有代码改动才重新部署）
+        Cloudflare Pages 重新部署（数据文件随站点一起发布）
                     │
                     ▼
-        手机浏览器 fetch raw.githubusercontent.com 上的 rooms.json
+        手机浏览器 fetch 同源的 ./data/rooms.json
 ```
 
 ### 为什么页面只显示当天

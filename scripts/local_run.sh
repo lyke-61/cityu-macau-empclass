@@ -26,13 +26,17 @@ stamp() { date "+%Y-%m-%d %H:%M:%S"; }
   fi
 
   # 用 git status 判断，这样错误文件的删除也能一起提交
-  if [ -z "$(git status --porcelain -- data/)" ]; then
+  # 同步一份给 Pages 同源托管
+  mkdir -p site/data
+  cp data/rooms.json site/data/rooms.json
+
+  if [ -z "$(git status --porcelain -- data/ site/data/)" ]; then
     echo "$(stamp) 数据无变化，跳过提交"
     echo "===== $(stamp) 结束 ====="
     exit 0
   fi
 
-  git add -A -- data/
+  git add -A -- data/ site/data/
   git -c user.name="emp-class" -c user.email="emp-class@users.noreply.github.com" \
       commit -q -m "chore: 更新教室占用 $(date '+%Y-%m-%d %H:%M')"
 

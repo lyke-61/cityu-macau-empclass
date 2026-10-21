@@ -18,6 +18,9 @@ let state = { data: null, open: new Set(), lastFetch: 0 };
 
 function dataSources() {
   const list = [];
+  // 同源优先：rooms.json 跟着网页一起由 Pages 提供，不依赖 GitHub 能否访问
+  list.push("./data/rooms.json");
+  // 备选：GitHub raw（部分地区网络拿不到，所以只当兜底）
   if (!CONFIG.githubUser.startsWith("YOUR_")) {
     list.push(
       `https://raw.githubusercontent.com/${CONFIG.githubUser}/${CONFIG.repo}/${CONFIG.branch}/${CONFIG.path}`
