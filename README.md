@@ -11,24 +11,34 @@
 ## 它怎么工作
 
 ```
-本机（定时触发，或手动执行 scripts/local_run.sh）
-        │
-        ├─ 跑 scraper/fetch_rooms.py
-        │     └─ 抓 6 个楼栋页，解析成「占用时段块」
-        │
-        └─ 写入 data/rooms.json、同步一份到 site/data/，push 到 GitHub
+Cloudflare Worker「room-scraper」
+   └─ Durable Object（锁定 apac 区域）每 4 小时唤醒
+        ├─ 抓 6 个楼栋页，解析成「占用时段块」
+        └─ 写入 KV（key: rooms.json）
                     │
                     ▼
-        Cloudflare Pages 重新部署（数据文件随站点一起发布）
+Pages Function 读取 KV → 提供 /data/rooms.json
                     │
                     ▼
-        手机浏览器 fetch 同源的 ./data/rooms.json
+手机浏览器同源读取，浏览器本地时间算「现在」
 ```
+
+数据全部在 Cloudflare 内部流转，不需要任何一台常开的电脑。
+
+### 为什么抓取要放在 Durable Object 里
+
+学校服务器 `202.175.79.228` 按来源 IP 段拦截：
+
+- 本机网络、香港/新加坡节点 ✅
+- GitHub Actions（Azure 美国）、Cloudflare 普通 cron（达拉斯 DFW）、Cloudflare 美国边缘 ❌ 全部超时
+
+Worker 的 cron 触发器跑在美国，抓不到。但 Durable Object 支持 `locationHint: "apac"`，
+把对象固定创建在亚太，它发出的请求就能通（实测落新加坡，446ms 拿到完整页面）。
+所以定时任务写成 DO 的 alarm，而不是 cron。
 
 ### 为什么页面只显示当天
 
-`RoomsBroadcast` 给出的是当天整张 8:00–24:00 的占用表，一天之内不会变化，
-所以只需要保持「当天有一份数据」即可，不需要高频轮询。
+`RoomsBroadcast` 给出的是当天整张 8:00–24:00 的占用表，一天之内不会变化。
 
 ## 声明
 
