@@ -1,10 +1,11 @@
 {
-  // 用 Cloudflare Workers 的静态资源功能托管 site/ 目录
-  // 部署命令：npx wrangler deploy
+  // Cloudflare Pages 项目配置。函数绑定通过这个文件管理。
   "name": "emp-class",
   "compatibility_date": "2026-10-21",
-  "assets": {
-    "directory": "./site",
-    "not_found_handling": "404-page"
-  }
+  "pages_build_output_dir": "site",
+
+  // 教室数据存在 KV 里，由 room-scraper 这个 Worker 定时写入
+  "kv_namespaces": [
+    { "binding": "ROOMS", "id": "071563e0bae54a13bfab5f48f0bb9109" }
+  ]
 }
